@@ -1,0 +1,1093 @@
+/*
+ * Composants partagés des portails web Pharma Connect.
+ *
+ * Mêmes noms de rôles que le kit Flutter — carte, bouton, badge, tuile d'indicateur,
+ * état vide, squelette — pour qu'une correction visuelle se transpose d'un support à
+ * l'autre sans traduction.
+ *
+ * Dépend de `tokens.css`, à charger avant ce fichier.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* --- Typographie : même échelle modulaire que les applications mobiles --------- */
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  margin: 0;
+  color: var(--text);
+}
+
+h1 {
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+}
+
+h2 {
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 700;
+  letter-spacing: -0.25px;
+}
+
+h3 {
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-tertiary {
+  color: var(--text-tertiary);
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  margin: 0 0 var(--space-xs);
+}
+
+.section-sub {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-2xl);
+  max-width: 68ch;
+}
+
+/*
+ * Chiffres tabulaires pour les colonnes de nombres : sans eux, une colonne de prix ou de
+ * quantités ondule d'une ligne à l'autre selon la largeur des chiffres. Réservé aux
+ * colonnes — un grand nombre isolé se lit mieux en chiffres proportionnels.
+ */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Gabarit : barre latérale + contenu --------------------------------------- */
+
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-xl) var(--space-md);
+  gap: var(--space-xs);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 0 var(--space-sm) var(--space-xl);
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-md);
+  border-radius: var(--radius-sm);
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background var(--duration-fast), color var(--duration-fast);
+}
+
+.nav-item:hover {
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+
+.nav-item.active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.nav-item .nav-icon {
+  font-size: 17px;
+  line-height: 1;
+  width: 20px;
+  text-align: center;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--border);
+}
+
+.app-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.app-header {
+  height: var(--header-height);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  padding: 0 var(--space-2xl);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.app-main {
+  padding: var(--space-2xl);
+  max-width: 1180px;
+  width: 100%;
+}
+
+/*
+ * Jusqu'au format tablette, la barre latérale devient une rangée d'onglets défilante en
+ * haut : une colonne de 248 px prend un tiers de la largeur sur une tablette en portrait.
+ */
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: var(--space-md) var(--space-lg);
+  }
+
+  .sidebar-brand {
+    padding-bottom: var(--space-md);
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: var(--space-sm);
+    scrollbar-width: none;
+  }
+
+  .sidebar-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-item {
+    width: auto;
+    white-space: nowrap;
+    padding: var(--space-sm) var(--space-lg);
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border);
+  }
+
+  .nav-item.active {
+    border-color: var(--accent);
+  }
+
+  .sidebar-footer {
+    display: none;
+  }
+
+  .app-header {
+    padding: 0 var(--space-lg);
+  }
+
+  .app-main {
+    padding: var(--space-lg);
+  }
+}
+
+/* --- Marque ------------------------------------------------------------------- */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.brand-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  /* Dégradé toujours profond : il porte un glyphe blanc dans les deux thèmes. */
+  background: linear-gradient(135deg, #15837E, #0F6E69);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 20px;
+}
+
+:root[data-brand='indigo'] .brand-icon {
+  background: linear-gradient(135deg, #4F46E5, #3A32B4);
+}
+
+.brand-text {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.brand-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* --- Champs de saisie --------------------------------------------------------- */
+
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: var(--space-lg) 0 var(--space-sm);
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 12px var(--space-lg);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border);
+  font-family: inherit;
+  font-size: 15px;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent);
+  /* Halo de focus visible : la seule bordure ne suffit pas à une navigation au clavier. */
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: var(--space-sm);
+}
+
+/* --- Boutons ------------------------------------------------------------------ */
+
+button {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  min-height: 44px;
+  padding: 0 var(--space-xl);
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 700;
+  transition: background var(--duration-fast), border-color var(--duration-fast),
+    transform var(--duration-instant);
+}
+
+/* Léger retrait à la pression : le même retour que `PressScale` côté mobile. */
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.btn-primary {
+  background: var(--accent-fill);
+  color: var(--on-accent);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1.5px solid var(--border-strong);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--surface-sunken);
+}
+
+.btn-soft {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.btn-ghost {
+  background: none;
+  color: var(--accent-strong);
+  min-height: 36px;
+  padding: 0 var(--space-md);
+  font-size: 13px;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-sm {
+  min-height: 36px;
+  padding: 0 var(--space-md);
+  font-size: 13px;
+}
+
+.btn-logout {
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+}
+
+.btn-logout:hover {
+  background: var(--surface-sunken);
+  color: var(--danger-text);
+}
+
+/* --- Cartes ------------------------------------------------------------------- */
+
+.card {
+  background: var(--surface-alt);
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border);
+  padding: var(--space-2xl);
+  margin-bottom: var(--space-2xl);
+  box-shadow: var(--shadow-low);
+}
+
+.card-flush {
+  padding: 0;
+  overflow: hidden;
+}
+
+.card-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--text);
+}
+
+/* --- Tuiles d'indicateur ------------------------------------------------------ */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-2xl);
+}
+
+.stat-tile {
+  background: var(--surface-alt);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-low);
+}
+
+.stat-label {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-md);
+}
+
+/*
+ * Valeur en chiffres proportionnels : le pas tabulaire donne à chaque figure la largeur
+ * d'un zéro, ce qui fait paraître un grand nombre isolé anormalement espacé. Le tabulaire
+ * est réservé aux colonnes.
+ */
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+.stat-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: var(--space-sm);
+}
+
+/* La couleur suit le sens souhaité, pas le signe : une hausse de ruptures est mauvaise. */
+.stat-delta.good {
+  color: var(--success-text);
+}
+
+.stat-delta.bad {
+  color: var(--danger-text);
+}
+
+/* --- Badges ------------------------------------------------------------------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 3px var(--space-md);
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.badge-neutral {
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+.badge-accent {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-color: var(--accent-soft-border);
+}
+
+.badge-success {
+  background: var(--success-soft);
+  color: var(--success-text);
+}
+
+.badge-warning {
+  background: var(--warning-soft);
+  color: var(--warning-text);
+}
+
+.badge-danger {
+  background: var(--danger-soft);
+  color: var(--danger-text);
+}
+
+.badge-info {
+  background: var(--info-soft);
+  color: var(--info-text);
+}
+
+/* --- Onglets en pilules ------------------------------------------------------- */
+
+.tabs {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: all var(--duration-fast);
+}
+
+.tab-btn.active {
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
+  color: var(--on-accent);
+}
+
+/* --- Barre d'outils au-dessus d'un tableau ------------------------------------ */
+
+/*
+ * Filtres à gauche, recherche à droite, sur une seule ligne. Les contrôles d'un tableau
+ * restent groupés au-dessus de lui plutôt que dispersés : c'est ce qui permet de
+ * comprendre d'un coup d'œil pourquoi la liste affiche ce qu'elle affiche.
+ */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-lg);
+}
+
+.search-field {
+  max-width: 280px;
+  min-height: 40px;
+  padding: var(--space-sm) var(--space-lg);
+  font-size: 14px;
+}
+
+/* --- Tableaux ----------------------------------------------------------------- */
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1.5px solid var(--border);
+  background: var(--surface-sunken);
+  white-space: nowrap;
+}
+
+/* Un en-tête triable annonce qu'il est cliquable, et dans quel sens il trie. */
+th[data-sort] {
+  cursor: pointer;
+  user-select: none;
+}
+
+th[data-sort]:hover {
+  color: var(--text);
+}
+
+th[data-sort]::after {
+  content: '↕';
+  margin-left: var(--space-xs);
+  opacity: 0.35;
+  font-size: 10px;
+}
+
+th[data-sort][aria-sort='ascending']::after {
+  content: '↑';
+  opacity: 1;
+  color: var(--accent-strong);
+}
+
+th[data-sort][aria-sort='descending']::after {
+  content: '↓';
+  opacity: 1;
+  color: var(--accent-strong);
+}
+
+td {
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:hover td {
+  background: var(--surface-sunken);
+}
+
+.cell-primary {
+  font-weight: 600;
+}
+
+.cell-secondary {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* --- Pagination --------------------------------------------------------------- */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.page-btn {
+  min-width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-btn:not(:disabled):hover {
+  background: var(--surface-sunken);
+}
+
+/* --- État vide ---------------------------------------------------------------- */
+
+/*
+ * Un état vide utile tient en quatre éléments : un visuel qui situe le contexte, un titre
+ * qui nomme la situation, une phrase qui l'explique, et une action qui en sort. Un simple
+ * « Aucun résultat » est un cul-de-sac.
+ */
+.empty-state {
+  text-align: center;
+  padding: var(--space-5xl) var(--space-2xl);
+}
+
+.empty-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto var(--space-xl);
+  border-radius: 50%;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: var(--accent-strong);
+}
+
+.empty-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: var(--space-sm);
+}
+
+.empty-message {
+  font-size: 14px;
+  color: var(--text-secondary);
+  max-width: 44ch;
+  margin: 0 auto var(--space-xl);
+  line-height: 1.55;
+}
+
+/* --- Squelettes --------------------------------------------------------------- */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--skeleton) 35%,
+    var(--skeleton-lit) 50%,
+    var(--skeleton) 65%
+  );
+  background-size: 300% 100%;
+  border-radius: var(--radius-xs);
+  animation: skeleton-sweep 1.2s ease-in-out infinite;
+}
+
+.skeleton-text {
+  height: 14px;
+  margin-bottom: var(--space-sm);
+}
+
+@keyframes skeleton-sweep {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -150% 0;
+  }
+}
+
+/* --- Bandeaux ----------------------------------------------------------------- */
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  margin-bottom: var(--space-lg);
+}
+
+.notice-danger {
+  background: var(--danger-soft);
+  color: var(--danger-text);
+}
+
+.notice-warning {
+  background: var(--warning-soft);
+  color: var(--warning-text);
+}
+
+.notice-info {
+  background: var(--info-soft);
+  color: var(--info-text);
+}
+
+.notice-success {
+  background: var(--success-soft);
+  color: var(--success-text);
+}
+
+.error-banner {
+  margin-top: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* --- Avatar et identité ------------------------------------------------------- */
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.user-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.user-role {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* --- Écran de connexion ------------------------------------------------------- */
+
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xl);
+  background: var(--bg);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--surface-alt);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4xl) var(--space-3xl);
+  box-shadow: var(--shadow-medium);
+}
+
+/* --- Grilles de formulaire ---------------------------------------------------- */
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-lg);
+}
+
+@media (max-width: 560px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.inline-form {
+  display: flex;
+  gap: var(--space-md);
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.inline-form > * {
+  flex: 1 1 160px;
+}
+
+.inline-form > .btn {
+  flex: 0 0 auto;
+}
+
+/* --- Choix segmenté ----------------------------------------------------------- */
+
+.segmented {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.segment {
+  flex: 1;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: all var(--duration-fast);
+}
+
+.segment.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+/* --- Notification éphémère ---------------------------------------------------- */
+
+.toast {
+  position: fixed;
+  bottom: var(--space-2xl);
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: #14201D;
+  color: #fff;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow-high);
+  z-index: 100;
+  opacity: 0;
+  transition: opacity var(--duration-base), transform var(--duration-base) var(--ease-enter);
+  pointer-events: none;
+  max-width: calc(100vw - 2 * var(--space-2xl));
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.toast-error {
+  background: var(--danger);
+  color: #fff;
+}
+
+.toast-success {
+  background: var(--success);
+  color: #fff;
+}
+
+/* --- Indicateur temps réel ---------------------------------------------------- */
+
+.live-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--success-text);
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-pill);
+  background: var(--success-soft);
+}
+
+.live-dot::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: live-pulse 1.8s ease-in-out infinite;
+}
+
+.live-dot.offline {
+  color: var(--text-secondary);
+  background: var(--surface-sunken);
+}
+
+.live-dot.offline::before {
+  background: var(--text-tertiary);
+  animation: none;
+}
+
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+}
+
+/*
+ * « Réduire les animations » : les transitions disparaissent, les états finaux restent.
+ * Une animation purement décorative devient inutile, mais rien ne doit cesser de
+ * s'afficher pour autant.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===========================================================================
+   Tableau de bord de pilotage
+   =========================================================================== */
+
+/* Carte de chiffre, avec un liseré qui porte le sens de la variation.
+   Le liseré plutôt qu'un fond coloré : sur quatre cartes côte à côte, quatre fonds
+   teintés deviennent un arc-en-ciel, et plus rien ne ressort. */
+.stat-card {
+  border-left: 3px solid var(--border);
+}
+.stat-card.stat-up { border-left-color: var(--success-text); }
+.stat-card.stat-down { border-left-color: var(--danger-text); }
+
+.stat-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* Bandeau d'alerte. Il nomme une action, pas un état — d'où le texte sur une ligne
+   entière plutôt qu'un badge. */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.alert-icon { font-size: 18px; line-height: 1.3; flex-shrink: 0; }
+
+.alert-danger {
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger-text) 30%, transparent);
+  color: var(--danger-text);
+}
+.alert-warning {
+  background: var(--warning-soft);
+  border-color: color-mix(in srgb, var(--warning-text) 30%, transparent);
+  color: var(--warning-text);
+}
+.alert-ok {
+  background: var(--success-soft);
+  border-color: color-mix(in srgb, var(--success-text) 25%, transparent);
+  color: var(--success-text);
+}
+
+/* Ligne en souffrance : teinte très légère, lisible en parcourant le tableau du regard
+   sans rien lire. Plus soutenue, elle rendrait le texte difficile à lire — or c'est
+   précisément cette ligne-là qu'on va vouloir lire. */
+.row-late { background: var(--danger-soft); }
+.text-danger { color: var(--danger-text); font-weight: 600; }

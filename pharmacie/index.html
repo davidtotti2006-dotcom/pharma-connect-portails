@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="fr" data-brand="indigo">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Cache-Control" content="no-store" />
+<title>Pharma Connect — Espace pharmacien</title>
+
+<script
+  src="https://cdn.socket.io/4.7.5/socket.io.min.js"
+  integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO"
+  crossorigin="anonymous"
+></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap"
+  rel="stylesheet"
+/>
+
+<!--
+  `data-brand="indigo"` sur <html> bascule le design system sur l'identité pharmacien,
+  la même que l'application mobile du même rôle. Le portail d'administration garde le
+  turquoise : l'accent est ce qui dit lequel des deux est ouvert.
+-->
+<link rel="stylesheet" href="../web-shared/tokens.css" />
+<link rel="stylesheet" href="../web-shared/base.css" />
+
+<style>
+  /* Spécifique au comptoir : les commandes, qui n'existent pas ailleurs. */
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    flex-wrap: wrap;
+  }
+
+  /* Interrupteur d'état de l'officine — de garde, ouvert 24h/24. */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-pill);
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--duration-fast);
+  }
+
+  .status-pill.on {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+  }
+
+  .switch {
+    position: relative;
+    width: 32px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+
+  .switch input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .slider {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-pill);
+    background: var(--border-strong);
+    transition: background var(--duration-base);
+    pointer-events: none;
+  }
+
+  .slider::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform var(--duration-base) var(--ease-move);
+  }
+
+  .switch input:checked + .slider {
+    background: var(--accent-fill);
+  }
+
+  .switch input:checked + .slider::after {
+    transform: translateX(14px);
+  }
+
+  /* Halo de focus sur l'interrupteur : la navigation au clavier doit rester visible. */
+  .switch input:focus-visible + .slider {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+
+  /* --- Cartes de commande --- */
+
+  .orders-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--space-lg);
+  }
+
+  .order-card {
+    background: var(--surface-alt);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    box-shadow: var(--shadow-low);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  /*
+   * Une commande qui attend une action porte un liseré d'accent à gauche. C'est ce qui
+   * permet de repérer le travail restant sans lire chaque pastille de statut.
+   */
+  .order-card.attention {
+    border-left: 4px solid var(--warning);
+  }
+
+  .order-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-md);
+  }
+
+  .order-customer {
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .order-phone,
+  .order-time {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .order-items {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    padding: var(--space-md) 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .order-total {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+  }
+
+  .order-actions {
+    display: flex;
+    gap: var(--space-sm);
+  }
+
+  .order-actions .btn {
+    flex: 1;
+  }
+
+  .qty-input {
+    width: 92px;
+    min-width: 92px;
+    padding: var(--space-sm) var(--space-md);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= Connexion ================= -->
+<div id="login-screen" class="login-screen">
+  <div class="login-card">
+    <div class="brand" style="margin-bottom: var(--space-2xl)">
+      <div class="brand-icon">⚕</div>
+      <div>
+        <div class="brand-text">Pharma Connect</div>
+        <div class="brand-sub">Espace pharmacien</div>
+      </div>
+    </div>
+
+    <div id="step-phone">
+      <label for="phone-input">Numéro de téléphone</label>
+      <input id="phone-input" type="tel" placeholder="+2250700000001" autocomplete="off" />
+      <div class="hint">Format : +225 suivi de 10 chiffres</div>
+      <button class="btn btn-primary btn-block" id="btn-send-otp" style="margin-top: var(--space-2xl)">
+        Envoyer le code
+      </button>
+    </div>
+
+    <div id="step-otp" class="hidden">
+      <label for="otp-input">Code de vérification</label>
+      <input id="otp-input" type="text" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="off" />
+      <div class="hint" id="otp-phone-hint"></div>
+      <button class="btn btn-primary btn-block" id="btn-verify-otp" style="margin-top: var(--space-2xl)">
+        Se connecter
+      </button>
+      <button class="btn btn-ghost btn-block" id="btn-change-phone" style="margin-top: var(--space-sm)">
+        Changer de numéro
+      </button>
+    </div>
+
+    <div id="login-error" class="error-banner hidden"></div>
+  </div>
+</div>
+
+<!-- ================= Tableau de bord ================= -->
+<div id="dashboard-screen" class="hidden">
+  <div class="app-shell">
+
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">⚕</div>
+        <div>
+          <div class="brand-text" id="pharmacy-name">—</div>
+          <div class="brand-sub" id="pharmacy-address">—</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="orders">
+          <span class="nav-icon">🧾</span><span>Commandes</span>
+        </button>
+        <button class="nav-item" data-view="stock">
+          <span class="nav-icon">📦</span><span>Stock</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="nav-item" id="btn-theme">
+          <span class="nav-icon" id="theme-icon">◐</span><span id="theme-label">Apparence auto</span>
+        </button>
+      </div>
+    </aside>
+
+    <div class="app-content">
+      <header class="app-header">
+        <div class="status-bar">
+          <span class="live-dot offline" id="live-dot">Direct</span>
+          <label class="status-pill" id="pill-duty">
+            <span class="switch"><input type="checkbox" id="toggle-duty" /><span class="slider"></span></span>
+            <span>De garde</span>
+          </label>
+          <label class="status-pill" id="pill-247">
+            <span class="switch"><input type="checkbox" id="toggle-247" /><span class="slider"></span></span>
+            <span>24h/24</span>
+          </label>
+        </div>
+        <div class="user-chip">
+          <div class="avatar" id="avatar-initial">P</div>
+          <div>
+            <div class="user-name" id="header-user-name">—</div>
+            <div class="user-role">Pharmacien</div>
+          </div>
+          <button class="btn-logout" id="btn-logout">Déconnexion</button>
+        </div>
+      </header>
+
+      <main class="app-main">
+
+        <!-- ---------- Vue : commandes ---------- -->
+        <section id="view-orders">
+          <h1 class="section-title">Commandes</h1>
+          <p class="section-sub">
+            Les commandes qui attendent une action remontent en premier. La liste se met à
+            jour en direct, sans rechargement.
+          </p>
+
+          <div class="stat-grid" id="orders-stats"></div>
+
+          <div id="orders-list" class="orders-grid"></div>
+
+          <div id="orders-empty" class="empty-state hidden">
+            <div class="empty-icon">🧾</div>
+            <div class="empty-title">Aucune commande pour le moment</div>
+            <p class="empty-message">
+              Les commandes passées par les clients depuis l'application mobile
+              apparaîtront ici dès leur réception.
+            </p>
+          </div>
+        </section>
+
+        <!-- ---------- Vue : stock ---------- -->
+        <section id="view-stock" class="hidden">
+          <h1 class="section-title">Stock</h1>
+          <p class="section-sub">
+            Les quantités saisies ici déterminent ce que les clients peuvent commander dans
+            votre officine. Une référence à zéro reste visible mais n'est plus commandable.
+          </p>
+
+          <div class="stat-grid" id="stock-stats"></div>
+
+          <div class="card">
+            <div class="card-title">＋ Ajouter un médicament au stock</div>
+            <div class="inline-form">
+              <div style="flex: 2 1 240px">
+                <label for="add-medication-select">Médicament</label>
+                <select id="add-medication-select"></select>
+              </div>
+              <div style="flex: 0 1 120px">
+                <label for="add-medication-qty">Quantité</label>
+                <input id="add-medication-qty" type="number" min="0" value="10" />
+              </div>
+              <button class="btn btn-primary" id="btn-add-stock">Ajouter</button>
+            </div>
+          </div>
+
+          <div class="toolbar" style="justify-content: flex-end">
+            <input
+              id="stock-search"
+              class="search-field"
+              type="search"
+              placeholder="Rechercher un médicament…"
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="card card-flush">
+            <div class="table-wrap">
+              <table id="stock-table">
+                <thead>
+                  <tr>
+                    <th data-sort="name">Médicament</th>
+                    <th data-sort="category">Catégorie</th>
+                    <th data-sort="price">Prix</th>
+                    <th data-sort="quantity">Quantité</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="stock-table-body"></tbody>
+              </table>
+            </div>
+            <div id="stock-pagination" class="pagination hidden"></div>
+            <div id="stock-empty" class="empty-state hidden">
+              <div class="empty-icon">📦</div>
+              <div class="empty-title">Aucun médicament en stock</div>
+              <p class="empty-message" id="stock-empty-message">
+                Ajoutez une première référence ci-dessus pour que les clients puissent
+                commander dans votre officine.
+              </p>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="../web-shared/app.js"></script>
+<script>
+'use strict';
+
+/*
+ * Portail pharmacien.
+ *
+ * Le client API, les notifications, le formatage et le moteur de tableau triable vivent
+ * dans web-shared/app.js ; ce fichier ne porte plus que la logique du comptoir.
+ */
+
+// Adresse de l'API.
+//
+// La production par defaut, et localhost uniquement quand la page est ouverte depuis
+// le disque ou un serveur local. L'inverse — localhost par defaut — produit une page
+// publiee qui ne repond pas, sans aucune erreur visible : le navigateur tente de
+// joindre la machine de celui qui regarde, et echoue en silence.
+var PROD_API = 'https://pharma-connect-backend-production.up.railway.app/api';
+var isLocal = ['localhost', '127.0.0.1', ''].indexOf(location.hostname) !== -1;
+var API_BASE = isLocal ? 'http://localhost:3000/api' : PROD_API;
+var WS_BASE = 'http://localhost:3000';
+var USER_KEY = 'pharmacy_user';
+
+PharmaWeb.configure({ tokenKey: 'pharmacy_token' });
+
+var api = PharmaWeb.createClient(API_BASE, logout);
+var esc = PharmaWeb.escapeHtml;
+
+var state = {
+  user: readStoredUser(),
+  pharmacy: null,
+  orders: [],
+  allMedications: [],
+  stockSearch: '',
+  socket: null,
+};
+
+function readStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+  } catch (error) {
+    return null;
+  }
+}
+
+function setBusy(button, busy, label) {
+  button.disabled = busy;
+  button.textContent = label;
+}
+
+// ---------- Connexion ----------
+
+document.getElementById('btn-send-otp').addEventListener('click', async function () {
+  var phone = document.getElementById('phone-input').value.trim();
+  var button = this;
+  hideLoginError();
+  setBusy(button, true, 'Envoi en cours…');
+  try {
+    await api('/auth/otp/request', { method: 'POST', body: JSON.stringify({ phone: phone }) });
+    document.getElementById('step-phone').classList.add('hidden');
+    document.getElementById('step-otp').classList.remove('hidden');
+    document.getElementById('otp-phone-hint').textContent = 'Code envoyé à ' + phone;
+    document.getElementById('otp-input').focus();
+  } catch (error) {
+    showLoginError(error.message);
+  } finally {
+    setBusy(button, false, 'Envoyer le code');
+  }
+});
+
+document.getElementById('btn-verify-otp').addEventListener('click', async function () {
+  var phone = document.getElementById('phone-input').value.trim();
+  var code = document.getElementById('otp-input').value.trim();
+  var button = this;
+  hideLoginError();
+  setBusy(button, true, 'Vérification…');
+  try {
+    var result = await api('/auth/otp/verify', {
+      method: 'POST',
+      body: JSON.stringify({ phone: phone, code: code }),
+    });
+    if (result.user.role !== 'PHARMACIEN') {
+      throw new Error("Ce compte n'est pas rattaché à une pharmacie.");
+    }
+    PharmaWeb.setToken(result.accessToken);
+    state.user = result.user;
+    localStorage.setItem(USER_KEY, JSON.stringify(result.user));
+    await enterDashboard();
+  } catch (error) {
+    showLoginError(error.message);
+  } finally {
+    setBusy(button, false, 'Se connecter');
+  }
+});
+
+document.getElementById('btn-change-phone').addEventListener('click', function () {
+  document.getElementById('step-otp').classList.add('hidden');
+  document.getElementById('step-phone').classList.remove('hidden');
+  document.getElementById('otp-input').value = '';
+  hideLoginError();
+});
+
+document.getElementById('btn-logout').addEventListener('click', logout);
+
+function showLoginError(message) {
+  var element = document.getElementById('login-error');
+  element.textContent = message;
+  element.classList.remove('hidden');
+}
+
+function hideLoginError() {
+  document.getElementById('login-error').classList.add('hidden');
+}
+
+function logout() {
+  if (state.socket) {
+    state.socket.disconnect();
+    state.socket = null;
+  }
+  PharmaWeb.clearToken();
+  localStorage.removeItem(USER_KEY);
+  state.user = null;
+  document.getElementById('dashboard-screen').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('step-otp').classList.add('hidden');
+  document.getElementById('step-phone').classList.remove('hidden');
+  document.getElementById('phone-input').value = '';
+  document.getElementById('otp-input').value = '';
+}
+
+// ---------- Navigation ----------
+
+document.querySelectorAll('.nav-item[data-view]').forEach(function (item) {
+  item.addEventListener('click', function () {
+    var view = item.getAttribute('data-view');
+    document.querySelectorAll('.nav-item[data-view]').forEach(function (other) {
+      other.classList.toggle('active', other === item);
+    });
+    document.getElementById('view-orders').classList.toggle('hidden', view !== 'orders');
+    document.getElementById('view-stock').classList.toggle('hidden', view !== 'stock');
+  });
+});
+
+// ---------- Apparence ----------
+
+var THEME_STATES = [
+  { value: null, icon: '◐', label: 'Apparence auto' },
+  { value: 'light', icon: '☀', label: 'Apparence claire' },
+  { value: 'dark', icon: '☾', label: 'Apparence sombre' },
+];
+
+var themeIndex = 0;
+try {
+  var storedTheme = localStorage.getItem('pharmacy_theme');
+  themeIndex = Math.max(
+    0,
+    THEME_STATES.findIndex(function (s) {
+      return s.value === storedTheme;
+    })
+  );
+} catch (error) {
+  themeIndex = 0;
+}
+
+function applyTheme() {
+  var theme = THEME_STATES[themeIndex];
+  if (theme.value) document.documentElement.setAttribute('data-theme', theme.value);
+  else document.documentElement.removeAttribute('data-theme');
+  document.getElementById('theme-icon').textContent = theme.icon;
+  document.getElementById('theme-label').textContent = theme.label;
+  try {
+    if (theme.value) localStorage.setItem('pharmacy_theme', theme.value);
+    else localStorage.removeItem('pharmacy_theme');
+  } catch (error) {
+    /* stockage indisponible */
+  }
+}
+
+document.getElementById('btn-theme').addEventListener('click', function () {
+  themeIndex = (themeIndex + 1) % THEME_STATES.length;
+  applyTheme();
+});
+
+applyTheme();
+
+// ---------- Statut de l'officine ----------
+
+document.getElementById('toggle-duty').addEventListener('change', async function (event) {
+  var checked = event.target.checked;
+  try {
+    await api('/pharmacy-dashboard/status', {
+      method: 'PATCH',
+      body: JSON.stringify({ isOnDuty: checked }),
+    });
+    document.getElementById('pill-duty').classList.toggle('on', checked);
+    PharmaWeb.toast(
+      checked ? 'Pharmacie marquée de garde' : 'Pharmacie retirée de la garde',
+      'success'
+    );
+  } catch (error) {
+    PharmaWeb.toast(error.message, 'error');
+    // L'interrupteur revient à son état réel : laissé coché après un échec, il
+    // ferait croire à une garde active que le serveur ignore.
+    event.target.checked = !checked;
+  }
+});
+
+document.getElementById('toggle-247').addEventListener('change', async function (event) {
+  var checked = event.target.checked;
+  try {
+    await api('/pharmacy-dashboard/status', {
+      method: 'PATCH',
+      body: JSON.stringify({ isOpen247: checked }),
+    });
+    document.getElementById('pill-247').classList.toggle('on', checked);
+    PharmaWeb.toast('Statut 24h/24 mis à jour', 'success');
+  } catch (error) {
+    PharmaWeb.toast(error.message, 'error');
+    event.target.checked = !checked;
+  }
+});
+
+// ---------- Commandes ----------
+
+var PHARMACIST_NEXT = { PENDING: 'CONFIRMED', CONFIRMED: 'PREPARING' };
+var CAN_CANCEL = { PENDING: true, CONFIRMED: true };
+
+var STATUS_TONE = {
+  PENDING: 'warning',
+  CONFIRMED: 'info',
+  PREPARING: 'accent',
+  OUT_FOR_DELIVERY: 'accent',
+  DELIVERED: 'success',
+  CANCELLED: 'danger',
+};
+
+var STATUS_LABEL = {
+  PENDING: 'Reçue',
+  CONFIRMED: 'Confirmée',
+  PREPARING: 'En préparation',
+  OUT_FOR_DELIVERY: 'En livraison',
+  DELIVERED: 'Livrée',
+  CANCELLED: 'Annulée',
+};
+
+var NEXT_LABEL = { CONFIRMED: 'Confirmer', PREPARING: 'Prête pour retrait' };
+
+async function loadOrders() {
+  state.orders = await api('/pharmacy-dashboard/orders');
+  renderOrders();
+}
+
+function renderOrders() {
+  var list = document.getElementById('orders-list');
+  var empty = document.getElementById('orders-empty');
+
+  renderOrderStats();
+
+  if (state.orders.length === 0) {
+    list.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  // Les commandes qui demandent une action du pharmacien remontent en premier : c'est
+  // l'ordre du travail à faire, pas l'ordre chronologique.
+  var sorted = state.orders.slice().sort(function (a, b) {
+    var aWaiting = a.status === 'PENDING' || a.status === 'CONFIRMED' ? 0 : 1;
+    var bWaiting = b.status === 'PENDING' || b.status === 'CONFIRMED' ? 0 : 1;
+    if (aWaiting !== bWaiting) return aWaiting - bWaiting;
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+
+  list.innerHTML = sorted
+    .map(function (order) {
+      var next = PHARMACIST_NEXT[order.status];
+      var canCancel = Boolean(CAN_CANCEL[order.status]);
+      var items = (order.items || [])
+        .map(function (item) {
+          return '<div>' + esc(item.quantity) + ' × ' + esc(item.medication.name) + '</div>';
+        })
+        .join('');
+
+      var actions = '';
+      if (next || canCancel) {
+        actions =
+          '<div class="order-actions">' +
+          (canCancel
+            ? '<button class="btn btn-secondary btn-sm" data-action="cancel" data-id="' +
+              esc(order.id) + '">Refuser</button>'
+            : '') +
+          (next
+            ? '<button class="btn btn-primary btn-sm" data-action="advance" data-id="' +
+              esc(order.id) + '" data-next="' + next + '">' + NEXT_LABEL[next] + '</button>'
+            : '') +
+          '</div>';
+      }
+
+      return (
+        '<article class="order-card' + (order.status === 'PENDING' ? ' attention' : '') + '">' +
+        '<div class="order-top">' +
+        '<div><div class="order-customer">' +
+        esc((order.user && order.user.fullName) || 'Client') +
+        '</div><div class="order-phone tabular">' +
+        esc((order.user && order.user.phone) || '') +
+        '</div></div>' +
+        '<div style="text-align:right">' +
+        '<span class="badge badge-' + (STATUS_TONE[order.status] || 'neutral') + '">' +
+        (STATUS_LABEL[order.status] || esc(order.status)) +
+        '</span><div class="order-time">' + PharmaWeb.formatDateTime(order.createdAt) + '</div>' +
+        '</div></div>' +
+        '<div class="order-items">' + items + '</div>' +
+        '<div class="order-total">' + PharmaWeb.formatPrice(order.totalAmountFcfa) + '</div>' +
+        (order.status === 'PREPARING'
+          ? '<div class="notice notice-info" style="margin:0">🛵 Prête pour retrait — en attente qu\'un livreur accepte la commande</div>'
+          : '') +
+        actions +
+        '</article>'
+      );
+    })
+    .join('');
+}
+
+function renderOrderStats() {
+  var waiting = state.orders.filter(function (order) {
+    return order.status === 'PENDING' || order.status === 'CONFIRMED';
+  }).length;
+  var preparing = state.orders.filter(function (order) {
+    return order.status === 'PREPARING';
+  }).length;
+  var delivered = state.orders.filter(function (order) {
+    return order.status === 'DELIVERED';
+  }).length;
+  var revenue = state.orders
+    .filter(function (order) {
+      return order.status === 'DELIVERED';
+    })
+    .reduce(function (sum, order) {
+      return sum + (order.totalAmountFcfa || 0);
+    }, 0);
+
+  var tiles = [
+    // Une commande en attente n'est pas une bonne nouvelle : c'est du travail qui
+    // attend, donc la tuile s'alarme dès qu'il y en a.
+    { label: 'À traiter', value: waiting, bad: waiting > 0 },
+    { label: 'En préparation', value: preparing },
+    { label: 'Livrées', value: delivered },
+    { label: 'Valeur livrée', value: PharmaWeb.formatPrice(revenue) },
+  ];
+
+  document.getElementById('orders-stats').innerHTML = tiles
+    .map(function (tile) {
+      return (
+        '<div class="stat-tile">' +
+        '<div class="stat-label">' + tile.label + '</div>' +
+        '<div class="stat-value">' + tile.value + '</div>' +
+        (tile.bad ? '<div class="stat-delta bad">en attente d\'action</div>' : '') +
+        '</div>'
+      );
+    })
+    .join('');
+}
+
+// Délégation d'événement : les cartes sont réécrites à chaque mise à jour temps réel,
+// donc des écouteurs posés sur chaque bouton seraient perdus à la première commande.
+document.getElementById('orders-list').addEventListener('click', function (event) {
+  var button = event.target.closest('button[data-action]');
+  if (!button) return;
+
+  var action = button.getAttribute('data-action');
+  var orderId = button.getAttribute('data-id');
+
+  if (action === 'advance') {
+    setOrderStatus(orderId, button.getAttribute('data-next'), button);
+    return;
+  }
+  if (action === 'cancel' && confirm('Refuser cette commande ? Le client sera informé.')) {
+    setOrderStatus(orderId, 'CANCELLED', button);
+  }
+});
+
+async function setOrderStatus(orderId, status, button) {
+  button.disabled = true;
+  try {
+    await api('/pharmacy-dashboard/orders/' + orderId + '/status', {
+      method: 'PATCH',
+      body: JSON.stringify({ status: status }),
+    });
+    PharmaWeb.toast(status === 'CANCELLED' ? 'Commande refusée' : 'Commande mise à jour', 'success');
+    await loadOrders();
+  } catch (error) {
+    PharmaWeb.toast(error.message, 'error');
+    button.disabled = false;
+  }
+}
+
+// ---------- Stock ----------
+
+var stockTable = PharmaWeb.createTable({
+  table: document.getElementById('stock-table'),
+  body: document.getElementById('stock-table-body'),
+  paginationHost: document.getElementById('stock-pagination'),
+  emptyHost: document.getElementById('stock-empty'),
+  pageSize: 20,
+  accessors: {
+    name: function (row) {
+      return (row.medication && row.medication.name) || '';
+    },
+    category: function (row) {
+      return (row.medication && row.medication.category) || '';
+    },
+    price: function (row) {
+      return (row.medication && row.medication.priceFcfa) || 0;
+    },
+    quantity: function (row) {
+      return row.stockQuantity || 0;
+    },
+  },
+  renderRow: function (row) {
+    var medication = row.medication || {};
+    var quantity = row.stockQuantity || 0;
+    var threshold = medication.alertThreshold || 0;
+
+    // Trois paliers : rupture, sous le seuil, normal. Le badge dit lequel, parce
+    // qu'un nombre seul ne dit pas s'il est bas.
+    var badge = '';
+    if (quantity === 0) {
+      badge = '<span class="badge badge-danger">Rupture</span>';
+    } else if (threshold > 0 && quantity <= threshold) {
+      badge = '<span class="badge badge-warning">Stock bas</span>';
+    }
+
+    return (
+      '<tr>' +
+      '<td><div class="cell-primary">' + esc(medication.name) + '</div>' +
+      '<div class="cell-secondary">' + esc(medication.description || '') + '</div></td>' +
+      '<td><span class="badge badge-neutral">' + esc(medication.category) + '</span></td>' +
+      '<td class="tabular">' + PharmaWeb.formatPrice(medication.priceFcfa) + '</td>' +
+      '<td><div style="display:flex;align-items:center;gap:var(--space-sm)">' +
+      '<input class="qty-input" type="number" min="0" value="' + quantity +
+      '" data-qty-id="' + esc(row.medicationId) + '" />' + badge +
+      '</div></td>' +
+      '<td><button class="btn btn-secondary btn-sm" data-remove-id="' + esc(row.medicationId) +
+      '">Retirer</button></td>' +
+      '</tr>'
+    );
+  },
+});
+
+function visibleStock() {
+  var stocks = (state.pharmacy && state.pharmacy.stocks) || [];
+  var search = state.stockSearch.trim().toLowerCase();
+  if (!search) return stocks;
+  return stocks.filter(function (row) {
+    var medication = row.medication || {};
+    return (
+      (medication.name || '').toLowerCase().indexOf(search) !== -1 ||
+      (medication.category || '').toLowerCase().indexOf(search) !== -1
+    );
+  });
+}
+
+function renderStock() {
+  stockTable.setRows(visibleStock());
+
+  var stocks = (state.pharmacy && state.pharmacy.stocks) || [];
+  var message = document.getElementById('stock-empty-message');
+  if (stocks.length > 0 && state.stockSearch) {
+    message.textContent = 'Aucun médicament ne correspond à « ' + state.stockSearch + ' ».';
+  } else {
+    message.textContent =
+      'Ajoutez une première référence ci-dessus pour que les clients puissent commander dans votre officine.';
+  }
+
+  renderStockStats(stocks);
+}
+
+function renderStockStats(stocks) {
+  var outOfStock = stocks.filter(function (row) {
+    return (row.stockQuantity || 0) === 0;
+  }).length;
+  var low = stocks.filter(function (row) {
+    var threshold = (row.medication && row.medication.alertThreshold) || 0;
+    var quantity = row.stockQuantity || 0;
+    return quantity > 0 && threshold > 0 && quantity <= threshold;
+  }).length;
+  var inventoryValue = stocks.reduce(function (sum, row) {
+    return sum + (row.stockQuantity || 0) * ((row.medication && row.medication.priceFcfa) || 0);
+  }, 0);
+
+  var tiles = [
+    { label: 'Références', value: stocks.length },
+    { label: 'En rupture', value: outOfStock, bad: outOfStock > 0 },
+    { label: 'Sous le seuil', value: low, bad: low > 0 },
+    { label: 'Valeur du stock', value: PharmaWeb.formatPrice(inventoryValue) },
+  ];
+
+  document.getElementById('stock-stats').innerHTML = tiles
+    .map(function (tile) {
+      return (
+        '<div class="stat-tile">' +
+        '<div class="stat-label">' + tile.label + '</div>' +
+        '<div class="stat-value">' + tile.value + '</div>' +
+        (tile.bad ? '<div class="stat-delta bad">à réapprovisionner</div>' : '') +
+        '</div>'
+      );
+    })
+    .join('');
+}
+
+document.getElementById('stock-table-body').addEventListener('change', async function (event) {
+  var input = event.target.closest('input[data-qty-id]');
+  if (!input) return;
+
+  var medicationId = input.getAttribute('data-qty-id');
+  var stockQuantity = parseInt(input.value, 10) || 0;
+  input.disabled = true;
+  try {
+    await api('/pharmacy-dashboard/stock/' + medicationId, {
+      method: 'PUT',
+      body: JSON.stringify({ stockQuantity: stockQuantity }),
+    });
+    PharmaWeb.toast('Quantité mise à jour', 'success');
+    await loadPharmacy();
+  } catch (error) {
+    PharmaWeb.toast(error.message, 'error');
+    input.disabled = false;
+  }
+});
+
+document.getElementById('stock-table-body').addEventListener('click', async function (event) {
+  var button = event.target.closest('button[data-remove-id]');
+  if (!button) return;
+
+  var medicationId = button.getAttribute('data-remove-id');
+  button.disabled = true;
+  try {
+    await api('/pharmacy-dashboard/stock/' + medicationId, { method: 'DELETE' });
+    PharmaWeb.toast('Médicament retiré du stock', 'success');
+    await loadPharmacy();
+  } catch (error) {
+    PharmaWeb.toast(error.message, 'error');
+    button.disabled = false;
+  }
+});
+
+var stockSearchTimer = null;
+document.getElementById('stock-search').addEventListener('input', function () {
+  var value = this.value;
+  if (stockSearchTimer) clearTimeout(stockSearchTimer);
+  stockSearchTimer = setTimeout(function () {
+    state.stockSearch = value;
+    renderStock();
+  }, 180);
+});
+
+document.getElementById('btn-add-stock').addEventListener('click', async function () {
+  var medicationId = document.getElementById('add-medication-select').value;
+  var stockQuantity = parseInt(document.getElementById('add-medication-qty').value, 10) || 0;
+  if (!medicationId) return;
+
+  var button = this;
+  setBusy(button, true, 'Ajout…');
+  try {
+    await api('/pharmacy-dashboard/stock/' + medicationId, {
+      method: 'PUT',
+      body: JSON.stringify({ stockQuantity: stockQuantity }),
+    });
+    PharmaWeb.toast('Médicament ajouté au stock', 'success');
+    await loadPharmacy();
+  } catch (error) {
+    PharmaWeb.toast(error.message, 'error');
+  } finally {
+    setBusy(button, false, 'Ajouter');
+  }
+});
+
+// ---------- Chargement ----------
+
+async function enterDashboard() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('dashboard-screen').classList.remove('hidden');
+  document.getElementById('header-user-name').textContent = state.user.fullName;
+  document.getElementById('avatar-initial').textContent = (state.user.fullName || 'P')
+    .charAt(0)
+    .toUpperCase();
+
+  document.getElementById('stock-table-body').innerHTML = PharmaWeb.tableSkeleton(5, 6);
+
+  await loadDashboardData();
+  connectRealtime();
+}
+
+/**
+ * Charge les trois sources du tableau de bord, avec nouvelle tentative à délai croissant.
+ *
+ * Une coupure passagère de la base laisserait sinon un tableau de bord vide sans
+ * explication, et le pharmacien conclurait qu'il n'a aucune commande.
+ */
+async function loadDashboardData(attempt) {
+  attempt = attempt || 1;
+  try {
+    await Promise.all([loadPharmacy(), loadOrders(), loadAllMedications()]);
+  } catch (error) {
+    if (attempt < 3) {
+      await new Promise(function (resolve) {
+        setTimeout(resolve, 1000 * attempt);
+      });
+      return loadDashboardData(attempt + 1);
+    }
+    PharmaWeb.toast('Impossible de charger le tableau de bord : ' + error.message, 'error');
+    stockTable.setRows([]);
+  }
+}
+
+function connectRealtime() {
+  state.socket = io(WS_BASE, {
+    auth: { token: PharmaWeb.getToken() },
+    transports: ['websocket'],
+  });
+
+  var dot = document.getElementById('live-dot');
+
+  state.socket.on('connect', function () {
+    dot.classList.remove('offline');
+    // La salle est rejointe à chaque connexion, pas seulement à la première : une
+    // reconnexion après coupure repartirait sinon sans abonnement.
+    if (state.pharmacy) {
+      state.socket.emit('join-pharmacy', { pharmacyId: state.pharmacy.id });
+    }
+  });
+
+  state.socket.on('disconnect', function () {
+    dot.classList.add('offline');
+  });
+
+  state.socket.on('pharmacy:order-changed', function () {
+    loadOrders();
+  });
+}
+
+async function loadPharmacy() {
+  state.pharmacy = await api('/pharmacy-dashboard/me');
+  document.getElementById('pharmacy-name').textContent = state.pharmacy.name;
+  document.getElementById('pharmacy-address').textContent =
+    state.pharmacy.address + ', ' + state.pharmacy.city;
+  document.getElementById('toggle-duty').checked = state.pharmacy.isOnDuty;
+  document.getElementById('toggle-247').checked = state.pharmacy.isOpen247;
+  document.getElementById('pill-duty').classList.toggle('on', state.pharmacy.isOnDuty);
+  document.getElementById('pill-247').classList.toggle('on', state.pharmacy.isOpen247);
+  renderStock();
+  if (state.socket && state.socket.connected) {
+    state.socket.emit('join-pharmacy', { pharmacyId: state.pharmacy.id });
+  }
+}
+
+async function loadAllMedications() {
+  state.allMedications = await api('/medications');
+  document.getElementById('add-medication-select').innerHTML = state.allMedications
+    .map(function (medication) {
+      return (
+        '<option value="' + esc(medication.id) + '">' +
+        esc(medication.name) + ' — ' + esc(medication.category) +
+        '</option>'
+      );
+    })
+    .join('');
+}
+
+// ---------- Reprise de session ----------
+
+(async function init() {
+  if (!PharmaWeb.getToken() || !state.user) return;
+  try {
+    var me = await api('/auth/me');
+    if (me.role === 'PHARMACIEN') {
+      await enterDashboard();
+      return;
+    }
+  } catch (error) {
+    // Jeton invalide ou expiré : retour à l'écran de connexion.
+  }
+  logout();
+})();
+</script>
+</body>
+</html>

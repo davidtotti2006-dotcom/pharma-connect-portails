@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pharma Connect — Portails</title>
+<link rel="stylesheet" href="web-shared/tokens.css">
+<link rel="stylesheet" href="web-shared/base.css">
+<style>
+  body { display:grid; place-items:center; min-height:100vh; margin:0; }
+  .choix { width:min(520px,92vw); padding:16px; }
+  h1 { font-size:26px; margin:0 0 6px; }
+  p.sub { color:var(--text-secondary); margin:0 0 28px; }
+  a.portail {
+    display:flex; align-items:center; gap:16px; text-decoration:none; color:inherit;
+    padding:20px; margin-bottom:12px; border:1px solid var(--border);
+    border-radius:14px; background:var(--surface);
+  }
+  a.portail:hover { border-color:var(--primary); }
+  .ico { font-size:28px; }
+  .t { font-weight:600; }
+  .d { font-size:13px; color:var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="choix">
+  <h1>Pharma Connect</h1>
+  <p class="sub">Choisissez votre portail.</p>
+  <a class="portail" href="admin/">
+    <span class="ico">◉</span>
+    <span><span class="t">Pilotage</span><br><span class="d">Chiffres, commandes en cours, comptes</span></span>
+  </a>
+  <a class="portail" href="pharmacie/">
+    <span class="ico">⚕</span>
+    <span><span class="t">Pharmacie</span><br><span class="d">Stock, commandes, ventes de l'officine</span></span>
+  </a>
+</div>
+</body>
+</html>

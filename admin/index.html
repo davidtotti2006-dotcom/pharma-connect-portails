@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Cache-Control" content="no-store" />
+<title>Pharma Connect — Administration</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap"
+  rel="stylesheet"
+/>
+
+<!--
+  Design system partagé : mêmes tokens, même typographie et mêmes composants que les
+  applications mobiles. Toute correction de palette ou d'espacement se fait dans
+  web-shared/ et profite aux deux portails.
+-->
+<link rel="stylesheet" href="../web-shared/tokens.css" />
+<link rel="stylesheet" href="../web-shared/base.css" />
+
+<style>
+  /* Spécifique à l'administration : rien d'autre ne vit ici. */
+
+  .staff-identity {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+  }
+
+  .staff-avatar {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- ================= Connexion ================= -->
+<div id="login-screen" class="login-screen">
+  <div class="login-card">
+    <div class="brand" style="margin-bottom: var(--space-2xl)">
+      <div class="brand-icon">⚕</div>
+      <div>
+        <div class="brand-text">Pharma Connect</div>
+        <div class="brand-sub">Espace administration</div>
+      </div>
+    </div>
+
+    <div id="step-phone">
+      <label for="phone-input">Numéro de téléphone administrateur</label>
+      <input id="phone-input" type="tel" placeholder="+2250700000091" autocomplete="off" />
+      <div class="hint">Format : +225 suivi de 10 chiffres</div>
+      <button class="btn btn-primary btn-block" id="btn-send-otp" style="margin-top: var(--space-2xl)">
+        Envoyer le code
+      </button>
+    </div>
+
+    <div id="step-otp" class="hidden">
+      <label for="otp-input">Code de vérification</label>
+      <input id="otp-input" type="text" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="off" />
+      <div class="hint" id="otp-phone-hint"></div>
+      <button class="btn btn-primary btn-block" id="btn-verify-otp" style="margin-top: var(--space-2xl)">
+        Se connecter
+      </button>
+      <button class="btn btn-ghost btn-block" id="btn-change-phone" style="margin-top: var(--space-sm)">
+        Changer de numéro
+      </button>
+    </div>
+
+    <div id="login-error" class="error-banner hidden"></div>
+  </div>
+</div>
+
+<!-- ================= Tableau de bord ================= -->
+<div id="dashboard-screen" class="hidden">
+  <div class="app-shell">
+
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">⚕</div>
+        <div>
+          <div class="brand-text">Pharma Connect</div>
+          <div class="brand-sub">Administration</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="overview">
+          <span class="nav-icon">◉</span><span>Pilotage</span>
+        </button>
+        <button class="nav-item" data-view="staff">
+          <span class="nav-icon">👤</span><span>Comptes</span>
+        </button>
+        <button class="nav-item" data-view="pharmacies">
+          <span class="nav-icon">⚕</span><span>Pharmacies</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="nav-item" id="btn-theme">
+          <span class="nav-icon" id="theme-icon">◐</span><span id="theme-label">Apparence auto</span>
+        </button>
+      </div>
+    </aside>
+
+    <div class="app-content">
+      <header class="app-header">
+        <h2 id="view-title">Pilotage</h2>
+        <div class="user-chip">
+          <div class="avatar" id="avatar-initial">A</div>
+          <div>
+            <div class="user-name" id="header-user-name">—</div>
+            <div class="user-role">Administrateur</div>
+          </div>
+          <button class="btn-logout" id="btn-logout">Déconnexion</button>
+        </div>
+      </header>
+
+      <main class="app-main">
+
+
+        <!-- ---------- Vue : pilotage ---------- -->
+        <section id="view-overview">
+          <h1 class="section-title">Pilotage</h1>
+          <p class="section-sub" id="overview-updated">Chargement…</p>
+
+          <!--
+            Les chiffres du jour, chacun compare a la veille.
+            « 42 commandes » ne dit rien ; « 42 commandes, contre 31 hier » dit tout.
+          -->
+          <div class="stat-grid" id="overview-stats"></div>
+
+          <!--
+            Ce qui appelle une action. Place avant les tableaux : un dirigeant qui n'a que
+            trente secondes doit voir ce qui brule, pas ce qui va bien.
+          -->
+          <div id="overview-alerts"></div>
+
+          <div class="card">
+            <h2 class="card-title">Commandes en cours</h2>
+            <div id="overview-queue"></div>
+          </div>
+        </section>
+
+        <!-- ---------- Vue : comptes ---------- -->
+        <section id="view-staff" class="hidden">
+          <h1 class="section-title">Comptes pharmacien &amp; livreur</h1>
+          <p class="section-sub">
+            Créez et gérez les comptes du personnel. Aucune inscription libre-service
+            n'existe pour ces rôles : un compte pharmacien ou livreur ne peut naître qu'ici.
+          </p>
+
+          <div class="stat-grid" id="staff-stats"></div>
+
+          <div class="card">
+            <div class="card-title">＋ Nouveau compte</div>
+            <form id="create-form">
+              <label>Type de compte</label>
+              <div class="segmented">
+                <button type="button" class="segment active" data-role="LIVREUR">Livreur</button>
+                <button type="button" class="segment" data-role="PHARMACIEN">Pharmacien</button>
+              </div>
+
+              <div class="form-row">
+                <div>
+                  <label for="new-phone">Numéro de téléphone</label>
+                  <input id="new-phone" type="tel" placeholder="+2250700000000" autocomplete="off" required />
+                </div>
+                <div>
+                  <label for="new-name">Nom complet</label>
+                  <input id="new-name" type="text" placeholder="Nom Prénom" autocomplete="off" required />
+                </div>
+              </div>
+
+              <div id="pharmacy-field" class="hidden">
+                <label for="new-pharmacy">Pharmacie de rattachement</label>
+                <select id="new-pharmacy"></select>
+              </div>
+
+              <button type="submit" class="btn btn-primary" id="btn-create-staff" style="margin-top: var(--space-xl)">
+                Créer le compte
+              </button>
+            </form>
+          </div>
+
+          <div class="toolbar">
+            <div class="tabs" style="margin: 0">
+              <button class="tab-btn active" data-filter="ALL">Tous</button>
+              <button class="tab-btn" data-filter="LIVREUR">Livreurs</button>
+              <button class="tab-btn" data-filter="PHARMACIEN">Pharmaciens</button>
+            </div>
+            <input
+              id="staff-search"
+              class="search-field"
+              type="search"
+              placeholder="Rechercher un nom ou un numéro…"
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="card card-flush">
+            <div class="table-wrap">
+              <table id="staff-table">
+                <thead>
+                  <tr>
+                    <th data-sort="name">Nom</th>
+                    <th data-sort="role">Rôle</th>
+                    <th data-sort="pharmacy">Pharmacie</th>
+                    <th data-sort="status">Statut</th>
+                    <th data-sort="createdAt">Créé le</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="staff-table-body"></tbody>
+              </table>
+            </div>
+            <div id="staff-pagination" class="pagination hidden"></div>
+            <div id="staff-empty" class="empty-state hidden">
+              <div class="empty-icon">👤</div>
+              <div class="empty-title">Aucun compte à afficher</div>
+              <p class="empty-message" id="staff-empty-message">
+                Les comptes pharmacien et livreur créés ci-dessus apparaîtront dans cette liste.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ---------- Vue : pharmacies ---------- -->
+        <section id="view-pharmacies" class="hidden">
+          <h1 class="section-title">Pharmacies partenaires</h1>
+          <p class="section-sub">
+            Officines enregistrées sur la plateforme. Ce sont elles auxquelles un compte
+            pharmacien peut être rattaché.
+          </p>
+
+          <div class="card card-flush">
+            <div class="table-wrap">
+              <table id="pharmacies-table">
+                <thead>
+                  <tr>
+                    <th data-sort="name">Nom</th>
+                    <th data-sort="city">Ville</th>
+                    <th data-sort="address">Adresse</th>
+                    <th data-sort="duty">Statut</th>
+                  </tr>
+                </thead>
+                <tbody id="pharmacies-table-body"></tbody>
+              </table>
+            </div>
+            <div id="pharmacies-pagination" class="pagination hidden"></div>
+            <div id="pharmacies-empty" class="empty-state hidden">
+              <div class="empty-icon">⚕</div>
+              <div class="empty-title">Aucune pharmacie enregistrée</div>
+              <p class="empty-message">
+                Les pharmacies sont créées côté base de données ou par le script de
+                peuplement. Sans officine, aucun compte pharmacien ne peut être rattaché.
+              </p>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="../web-shared/app.js"></script>
+<script>
+'use strict';
+
+/*
+ * Portail d'administration.
+ *
+ * Le client API, l'échappement HTML, les notifications, le formatage et le moteur de
+ * tableau triable vivent dans web-shared/app.js — ce fichier ne contient plus que ce qui
+ * est propre à l'administration.
+ */
+
+// Adresse de l'API.
+//
+// La production par defaut, et localhost uniquement quand la page est ouverte depuis
+// le disque ou un serveur local. L'inverse — localhost par defaut — produit une page
+// publiee qui ne repond pas, sans aucune erreur visible : le navigateur tente de
+// joindre la machine de celui qui regarde, et echoue en silence.
+var PROD_API = 'https://pharma-connect-backend-production.up.railway.app/api';
+var isLocal = ['localhost', '127.0.0.1', ''].indexOf(location.hostname) !== -1;
+var API_BASE = isLocal ? 'http://localhost:3000/api' : PROD_API;
+var USER_KEY = 'admin_user';
+
+PharmaWeb.configure({ tokenKey: 'admin_token' });
+
+var api = PharmaWeb.createClient(API_BASE, logout);
+var esc = PharmaWeb.escapeHtml;
+
+var state = {
+  user: readStoredUser(),
+  pharmacies: [],
+  staff: [],
+  filter: 'ALL',
+  search: '',
+  createRole: 'LIVREUR',
+};
+
+function readStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+  } catch (error) {
+    return null;
+  }
+}
+
+// ---------- Connexion ----------
+
+document.getElementById('btn-send-otp').addEventListener('click', async function () {
+  var phone = document.getElementById('phone-input').value.trim();
+  var button = this;
+  hideLoginError();
+  setBusy(button, true, 'Envoi en cours…');
+  try {
+    await api('/auth/otp/request', { method: 'POST', body: JSON.stringify({ phone: phone }) });
+    document.getElementById('step-phone').classList.add('hidden');
+    document.getElementById('step-otp').classList.remove('hidden');
+    document.getElementById('otp-phone-hint').textContent = 'Code envoyé à ' + phone;
+    document.getElementById('otp-input').focus();
+  } catch (error) {
+    showLoginError(error.message);
+  } finally {
+    setBusy(button, false, 'Envoyer le code');
+  }
+});
+
+document.getElementById('btn-verify-otp').addEventListener('click', async function () {
+  var phone = document.getElementById('phone-input').value.trim();
+  var code = document.getElementById('otp-input').value.trim();
+  var button = this;
+  hideLoginError();
+  setBusy(button, true, 'Vérification…');
+  try {
+    var result = await api('/auth/otp/verify', {
+      method: 'POST',
+      body: JSON.stringify({ phone: phone, code: code }),
+    });
+    // Le rôle est vérifié ici en plus du serveur : un non-administrateur qui réussit
+    // l'OTP ne doit pas voir l'interface, même vide.
+    if (result.user.role !== 'ADMIN') {
+      throw new Error("Ce compte n'a pas les droits d'administration.");
+    }
+    PharmaWeb.setToken(result.accessToken);
+    state.user = result.user;
+    localStorage.setItem(USER_KEY, JSON.stringify(result.user));
+    enterDashboard();
+  } catch (error) {
+    showLoginError(error.message);
+  } finally {
+    setBusy(button, false, 'Se connecter');
+  }
+});
+
+document.getElementById('btn-change-phone').addEventListener('click', function () {
+  document.getElementById('step-otp').classList.add('hidden');
+  document.getElementById('step-phone').classList.remove('hidden');
+  document.getElementById('otp-input').value = '';
+  hideLoginError();
+});
+
+document.getElementById('btn-logout').addEventListener('click', logout);
+
+function setBusy(button, busy, label) {
+  button.disabled = busy;
+  button.textContent = label;
+}
+
+function showLoginError(message) {
+  var element = document.getElementById('login-error');
+  element.textContent = message;
+  element.classList.remove('hidden');
+}
+
+function hideLoginError() {
+  document.getElementById('login-error').classList.add('hidden');
+}
+
+function logout() {
+  PharmaWeb.clearToken();
+  localStorage.removeItem(USER_KEY);
+  state.user = null;
+  document.getElementById('dashboard-screen').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('step-otp').classList.add('hidden');
+  document.getElementById('step-phone').classList.remove('hidden');
+  document.getElementById('phone-input').value = '';
+  document.getElementById('otp-input').value = '';
+}
+
+// ---------- Navigation ----------
+
+var VIEW_TITLES = { overview: 'Pilotage', staff: 'Comptes', pharmacies: 'Pharmacies' };
+
+document.querySelectorAll('.nav-item[data-view]').forEach(function (item) {
+  item.addEventListener('click', function () {
+    var view = item.getAttribute('data-view');
+    document.querySelectorAll('.nav-item[data-view]').forEach(function (other) {
+      other.classList.toggle('active', other === item);
+    });
+    document.getElementById('view-overview').classList.toggle('hidden', view !== 'overview');
+    document.getElementById('view-staff').classList.toggle('hidden', view !== 'staff');
+    document.getElementById('view-pharmacies').classList.toggle('hidden', view !== 'pharmacies');
+    document.getElementById('view-title').textContent = VIEW_TITLES[view];
+  });
+});
+
+// ---------- Apparence ----------
+
+/*
+ * Trois états et non un interrupteur : « auto » suit le réglage du système, qui est le
+ * défaut attendu, et doit rester atteignable après un choix manuel.
+ */
+var THEME_STATES = [
+  { value: null, icon: '◐', label: 'Apparence auto' },
+  { value: 'light', icon: '☀', label: 'Apparence claire' },
+  { value: 'dark', icon: '☾', label: 'Apparence sombre' },
+];
+
+var themeIndex = 0;
+try {
+  var storedTheme = localStorage.getItem('admin_theme');
+  themeIndex = Math.max(
+    0,
+    THEME_STATES.findIndex(function (s) {
+      return s.value === storedTheme;
+    })
+  );
+} catch (error) {
+  themeIndex = 0;
+}
+
+function applyTheme() {
+  var theme = THEME_STATES[themeIndex];
+  if (theme.value) {
+    document.documentElement.setAttribute('data-theme', theme.value);
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+  document.getElementById('theme-icon').textContent = theme.icon;
+  document.getElementById('theme-label').textContent = theme.label;
+  try {
+    if (theme.value) localStorage.setItem('admin_theme', theme.value);
+    else localStorage.removeItem('admin_theme');
+  } catch (error) {
+    /* stockage indisponible : le choix ne survivra pas au rechargement */
+  }
+}
+
+document.getElementById('btn-theme').addEventListener('click', function () {
+  themeIndex = (themeIndex + 1) % THEME_STATES.length;
+  applyTheme();
+});
+
+applyTheme();
+
+// ---------- Tableau des comptes ----------
+
+var staffTable = PharmaWeb.createTable({
+  table: document.getElementById('staff-table'),
+  body: document.getElementById('staff-table-body'),
+  paginationHost: document.getElementById('staff-pagination'),
+  emptyHost: document.getElementById('staff-empty'),
+  pageSize: 15,
+  accessors: {
+    name: function (row) {
+      return row.fullName || '';
+    },
+    role: function (row) {
+      return row.role || '';
+    },
+    pharmacy: function (row) {
+      return (row.pharmacy && row.pharmacy.name) || '';
+    },
+    status: function (row) {
+      return row.isActive ? 0 : 1;
+    },
+    createdAt: function (row) {
+      return new Date(row.createdAt).getTime() || 0;
+    },
+  },
+  renderRow: function (row) {
+    var initial = (row.fullName || '?').charAt(0).toUpperCase();
+    return (
+      '<tr>' +
+      '<td><div class="staff-identity">' +
+      '<div class="staff-avatar">' + esc(initial) + '</div>' +
+      '<div><div class="cell-primary">' + esc(row.fullName) + '</div>' +
+      '<div class="cell-secondary tabular">' + esc(row.phone) + '</div></div>' +
+      '</div></td>' +
+      '<td><span class="badge badge-neutral">' +
+      (row.role === 'PHARMACIEN' ? 'Pharmacien' : 'Livreur') +
+      '</span></td>' +
+      '<td>' + (row.pharmacy ? esc(row.pharmacy.name) : '<span class="text-tertiary">—</span>') + '</td>' +
+      '<td><span class="badge ' + (row.isActive ? 'badge-success' : 'badge-danger') + '">' +
+      (row.isActive ? 'Actif' : 'Désactivé') +
+      '</span></td>' +
+      '<td class="cell-secondary tabular">' + PharmaWeb.formatDateTime(row.createdAt) + '</td>' +
+      '<td><button class="btn btn-secondary btn-sm" data-toggle-id="' + esc(row.id) + '" ' +
+      'data-active="' + row.isActive + '">' +
+      (row.isActive ? 'Désactiver' : 'Réactiver') +
+      '</button></td>' +
+      '</tr>'
+    );
+  },
+});
+
+// Délégation d'événement sur le `<tbody>` : les lignes sont réécrites à chaque tri et à
+// chaque changement de page, donc un écouteur posé sur chaque bouton serait perdu.
+document.getElementById('staff-table-body').addEventListener('click', async function (event) {
+  var button = event.target.closest('button[data-toggle-id]');
+  if (!button) return;
+
+  var id = button.getAttribute('data-toggle-id');
+  var currentlyActive = button.getAttribute('data-active') === 'true';
+  button.disabled = true;
+  try {
+    await api('/admin/staff/' + id + '/active', {
+      method: 'PATCH',
+      body: JSON.stringify({ isActive: !currentlyActive }),
+    });
+    PharmaWeb.toast(currentlyActive ? 'Compte désactivé' : 'Compte réactivé', 'success');
+    await loadStaff();
+  } catch (error) {
+    PharmaWeb.toast(error.message, 'error');
+    button.disabled = false;
+  }
+});
+
+var pharmaciesTable = PharmaWeb.createTable({
+  table: document.getElementById('pharmacies-table'),
+  body: document.getElementById('pharmacies-table-body'),
+  paginationHost: document.getElementById('pharmacies-pagination'),
+  emptyHost: document.getElementById('pharmacies-empty'),
+  pageSize: 15,
+  accessors: {
+    name: function (row) {
+      return row.name || '';
+    },
+    city: function (row) {
+      return row.city || '';
+    },
+    address: function (row) {
+      return row.address || '';
+    },
+    duty: function (row) {
+      return row.isOnDuty ? 0 : 1;
+    },
+  },
+  renderRow: function (row) {
+    var badges = '';
+    if (row.isOnDuty) badges += '<span class="badge badge-warning">De garde</span> ';
+    if (row.isOpen247) badges += '<span class="badge badge-accent">24h/24</span>';
+    if (!badges) badges = '<span class="text-tertiary">Horaires habituels</span>';
+    return (
+      '<tr>' +
+      '<td class="cell-primary">' + esc(row.name) + '</td>' +
+      '<td>' + esc(row.city) + '</td>' +
+      '<td class="cell-secondary">' + esc(row.address) + '</td>' +
+      '<td>' + badges + '</td>' +
+      '</tr>'
+    );
+  },
+});
+
+// ---------- Filtres ----------
+
+function visibleStaff() {
+  var search = state.search.trim().toLowerCase();
+  return state.staff.filter(function (row) {
+    if (state.filter !== 'ALL' && row.role !== state.filter) return false;
+    if (!search) return true;
+    return (
+      (row.fullName || '').toLowerCase().indexOf(search) !== -1 ||
+      (row.phone || '').toLowerCase().indexOf(search) !== -1
+    );
+  });
+}
+
+function applyStaffFilters() {
+  var rows = visibleStaff();
+  staffTable.setRows(rows);
+
+  // Le message de l'état vide dit pourquoi la liste est vide : « aucun résultat pour
+  // cette recherche » et « aucun compte créé » demandent des actions différentes.
+  var message = document.getElementById('staff-empty-message');
+  if (state.staff.length === 0) {
+    message.textContent =
+      'Les comptes pharmacien et livreur créés ci-dessus apparaîtront dans cette liste.';
+  } else if (state.search) {
+    message.textContent = 'Aucun compte ne correspond à « ' + state.search + ' ».';
+  } else {
+    message.textContent =
+      state.filter === 'LIVREUR'
+        ? 'Aucun compte livreur pour le moment.'
+        : 'Aucun compte pharmacien pour le moment.';
+  }
+
+  renderStaffStats();
+}
+
+function renderStaffStats() {
+  var total = state.staff.length;
+  var couriers = state.staff.filter(function (s) {
+    return s.role === 'LIVREUR';
+  }).length;
+  var pharmacists = state.staff.filter(function (s) {
+    return s.role === 'PHARMACIEN';
+  }).length;
+  var disabled = state.staff.filter(function (s) {
+    return !s.isActive;
+  }).length;
+
+  var tiles = [
+    { label: 'Comptes au total', value: total },
+    { label: 'Livreurs', value: couriers },
+    { label: 'Pharmaciens', value: pharmacists },
+    // Un compte désactivé n'est pas une bonne nouvelle : la tuile le signale en rouge
+    // dès qu'il y en a, et reste neutre à zéro.
+    { label: 'Comptes désactivés', value: disabled, bad: disabled > 0 },
+  ];
+
+  document.getElementById('staff-stats').innerHTML = tiles
+    .map(function (tile) {
+      return (
+        '<div class="stat-tile">' +
+        '<div class="stat-label">' + tile.label + '</div>' +
+        '<div class="stat-value">' + tile.value + '</div>' +
+        (tile.bad ? '<div class="stat-delta bad">à vérifier</div>' : '') +
+        '</div>'
+      );
+    })
+    .join('');
+}
+
+document.querySelectorAll('.tab-btn').forEach(function (button) {
+  button.addEventListener('click', function () {
+    document.querySelectorAll('.tab-btn').forEach(function (other) {
+      other.classList.remove('active');
+    });
+    button.classList.add('active');
+    state.filter = button.getAttribute('data-filter');
+    applyStaffFilters();
+  });
+});
+
+var searchTimer = null;
+document.getElementById('staff-search').addEventListener('input', function () {
+  var value = this.value;
+  // Filtrage différé : sans cela, chaque frappe réécrit le tableau entier.
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(function () {
+    state.search = value;
+    applyStaffFilters();
+  }, 180);
+});
+
+// ---------- Création de compte ----------
+
+document.querySelectorAll('.segment[data-role]').forEach(function (button) {
+  button.addEventListener('click', function () {
+    document.querySelectorAll('.segment[data-role]').forEach(function (other) {
+      other.classList.remove('active');
+    });
+    button.classList.add('active');
+    state.createRole = button.getAttribute('data-role');
+    var isPharmacist = state.createRole === 'PHARMACIEN';
+    document.getElementById('pharmacy-field').classList.toggle('hidden', !isPharmacist);
+    document.getElementById('new-pharmacy').required = isPharmacist;
+  });
+});
+
+document.getElementById('create-form').addEventListener('submit', async function (event) {
+  event.preventDefault();
+  var button = document.getElementById('btn-create-staff');
+  var payload = {
+    phone: document.getElementById('new-phone').value.trim(),
+    fullName: document.getElementById('new-name').value.trim(),
+    role: state.createRole,
+  };
+  if (state.createRole === 'PHARMACIEN') {
+    payload.pharmacyId = document.getElementById('new-pharmacy').value;
+  }
+
+  setBusy(button, true, 'Création en cours…');
+  try {
+    await api('/admin/staff', { method: 'POST', body: JSON.stringify(payload) });
+    PharmaWeb.toast('Compte créé avec succès', 'success');
+    document.getElementById('new-phone').value = '';
+    document.getElementById('new-name').value = '';
+    await loadStaff();
+  } catch (error) {
+    PharmaWeb.toast(error.message, 'error');
+  } finally {
+    setBusy(button, false, 'Créer le compte');
+  }
+});
+
+// ---------- Chargement ----------
+
+async function enterDashboard() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('dashboard-screen').classList.remove('hidden');
+  document.getElementById('header-user-name').textContent = state.user.fullName;
+  document.getElementById('avatar-initial').textContent = (state.user.fullName || 'A')
+    .charAt(0)
+    .toUpperCase();
+
+  // Squelettes posés avant l'appel : la hauteur du tableau est annoncée, donc la page ne
+  // sursaute pas à l'arrivée des données.
+  document.getElementById('staff-table-body').innerHTML = PharmaWeb.tableSkeleton(6, 5);
+
+  await Promise.all([loadOverview(), loadPharmacies(), loadStaff()]);
+}
+
+// ---------- Pilotage ----------
+
+/*
+ * Tableau de bord du dirigeant.
+ *
+ * Trois principes ont guidé ce qui s'affiche et dans quel ordre :
+ *
+ * 1. Chaque chiffre est comparé à la veille. « 42 commandes » ne dit rien ; « 42 contre
+ *    31 hier » dit tout. Un tableau sans comparaison oblige à se souvenir, et personne ne
+ *    se souvient.
+ *
+ * 2. Ce qui appelle une action passe avant ce qui va bien. Quelqu'un qui n'a que trente
+ *    secondes doit voir ce qui brûle, pas ce qui ronronne.
+ *
+ * 3. Aucun chiffre inventé. Pas de taux de conversion ni de panier moyen par canal : il
+ *    faudrait un suivi d'usage, et aucun n'est installé. Cinq chiffres exacts valent mieux
+ *    que vingt dont la moitié serait devinée.
+ */
+async function loadOverview() {
+  var stats = document.getElementById('overview-stats');
+  stats.innerHTML = PharmaWeb.statSkeleton ? PharmaWeb.statSkeleton(4) : '';
+
+  try {
+    var data = await api('/admin/overview');
+    renderOverview(data);
+  } catch (error) {
+    document.getElementById('overview-updated').textContent =
+      'Chiffres indisponibles — ' + error.message;
+    stats.innerHTML = '';
+  }
+}
+
+function renderOverview(data) {
+  document.getElementById('overview-updated').textContent =
+    'Au ' + PharmaWeb.formatDateTime(data.generatedAt);
+
+  document.getElementById('overview-stats').innerHTML = [
+    statCard(
+      "Chiffre d'affaires du jour",
+      PharmaWeb.formatPrice(data.revenue.today),
+      deltaLabel(data.revenue.change, PharmaWeb.formatPrice(data.revenue.yesterday)),
+      data.revenue.change
+    ),
+    statCard(
+      'Commandes du jour',
+      String(data.orders.today),
+      deltaLabel(data.orders.change, data.orders.yesterday + ' hier'),
+      data.orders.change
+    ),
+    statCard(
+      'Pharmacies partenaires',
+      String(data.network.partnerPharmacies),
+      'sur ' + data.network.totalPharmacies + ' référencées',
+      null
+    ),
+    statCard(
+      'Nouveaux clients',
+      String(data.clients.newThisWeek),
+      'cette semaine · ' + data.clients.total + ' au total',
+      null
+    ),
+  ].join('');
+
+  renderAlerts(data);
+  renderQueue(data.queue);
+}
+
+/*
+ * Une pastille de variation n'a de sens que si la comparaison en a. Depuis zéro, on
+ * n'écrit pas « +100 % » mais « pas de comparaison » : afficher un pourcentage depuis zéro
+ * est la façon la plus courante de mentir avec un tableau de bord, et celui qui le lit
+ * finit par ne plus croire aucun chiffre.
+ */
+function deltaLabel(change, previousLabel) {
+  if (change === null || change === undefined) {
+    return 'hier : ' + previousLabel;
+  }
+  var sign = change > 0 ? '+' : '';
+  return sign + change + ' % · hier : ' + previousLabel;
+}
+
+function statCard(label, value, hint, change) {
+  var tone = '';
+  if (change !== null && change !== undefined) {
+    tone = change >= 0 ? 'stat-up' : 'stat-down';
+  }
+  return (
+    '<div class="card stat-card ' + tone + '">' +
+    '<div class="stat-label">' + esc(label) + '</div>' +
+    '<div class="stat-value">' + esc(value) + '</div>' +
+    '<div class="stat-hint">' + esc(hint) + '</div>' +
+    '</div>'
+  );
+}
+
+/*
+ * Les alertes. Chacune nomme une action, pas un état : « 3 commandes attendent depuis plus
+ * de 45 minutes » appelle un coup de fil, « 3 commandes en retard » appelle un haussement
+ * d'épaules.
+ */
+function renderAlerts(data) {
+  var alerts = [];
+
+  if (data.orders.stale > 0) {
+    alerts.push({
+      tone: 'danger',
+      icon: '⏱',
+      text:
+        data.orders.stale +
+        ' commande' + (data.orders.stale > 1 ? 's' : '') +
+        ' attend' + (data.orders.stale > 1 ? 'ent' : '') +
+        ' depuis plus de ' + data.orders.staleThresholdMinutes +
+        ' minutes. Appelez la pharmacie concernée.',
+    });
+  }
+
+  if (data.advice.openThreads > 0) {
+    alerts.push({
+      tone: 'warning',
+      icon: '💬',
+      text:
+        data.advice.openThreads +
+        ' conversation' + (data.advice.openThreads > 1 ? 's' : '') +
+        ' de conseil ouverte' + (data.advice.openThreads > 1 ? 's' : '') + '.',
+    });
+  }
+
+  if (data.network.activeCouriers === 0) {
+    alerts.push({
+      tone: 'danger',
+      icon: '🛵',
+      text: 'Aucun livreur actif. Aucune commande ne peut être livrée.',
+    });
+  }
+
+  if (data.network.partnerPharmacies === 0) {
+    alerts.push({
+      tone: 'danger',
+      icon: '⚕',
+      text: 'Aucune pharmacie partenaire. Les clients ne peuvent pas commander.',
+    });
+  }
+
+  var container = document.getElementById('overview-alerts');
+  if (alerts.length === 0) {
+    container.innerHTML =
+      '<div class="card alert alert-ok"><span class="alert-icon">✓</span>' +
+      '<span>Rien ne requiert votre attention.</span></div>';
+    return;
+  }
+
+  container.innerHTML = alerts
+    .map(function (a) {
+      return (
+        '<div class="card alert alert-' + a.tone + '">' +
+        '<span class="alert-icon">' + a.icon + '</span>' +
+        '<span>' + esc(a.text) + '</span>' +
+        '</div>'
+      );
+    })
+    .join('');
+}
+
+var STATUS_LABELS = {
+  PENDING: 'En attente',
+  CONFIRMED: 'Confirmée',
+  PREPARING: 'En préparation',
+  OUT_FOR_DELIVERY: 'En livraison',
+};
+
+function renderQueue(queue) {
+  var container = document.getElementById('overview-queue');
+
+  if (!queue || queue.length === 0) {
+    container.innerHTML =
+      '<div class="empty"><div class="empty-icon">📦</div>' +
+      '<div class="empty-title">Aucune commande en cours</div></div>';
+    return;
+  }
+
+  container.innerHTML =
+    '<table class="table"><thead><tr>' +
+    '<th>Client</th><th>Pharmacie</th><th>État</th><th>Attente</th><th>Montant</th>' +
+    '</tr></thead><tbody>' +
+    queue
+      .map(function (o) {
+        // Au-delà du seuil, la ligne se signale d'elle-même. On parcourt un tableau du
+        // regard ; une couleur se repère sans lire.
+        var late = o.waitingMinutes >= 45;
+        return (
+          '<tr class="' + (late ? 'row-late' : '') + '">' +
+          '<td class="cell-primary">' + esc(o.clientName) + '</td>' +
+          '<td class="cell-secondary">' + esc(o.pharmacyName) + '</td>' +
+          '<td>' + esc(STATUS_LABELS[o.status] || o.status) + '</td>' +
+          '<td class="' + (late ? 'text-danger' : '') + '">' + o.waitingMinutes + ' min</td>' +
+          '<td>' + esc(PharmaWeb.formatPrice(o.totalAmountFcfa)) + '</td>' +
+          '</tr>'
+        );
+      })
+      .join('') +
+    '</tbody></table>';
+}
+
+async function loadPharmacies() {
+  try {
+    state.pharmacies = await api('/admin/pharmacies');
+    document.getElementById('new-pharmacy').innerHTML = state.pharmacies
+      .map(function (pharmacy) {
+        return (
+          '<option value="' + esc(pharmacy.id) + '">' +
+          esc(pharmacy.name) + ' — ' + esc(pharmacy.city) +
+          '</option>'
+        );
+      })
+      .join('');
+    pharmaciesTable.setRows(state.pharmacies);
+  } catch (error) {
+    PharmaWeb.toast(error.message, 'error');
+  }
+}
+
+async function loadStaff() {
+  try {
+    state.staff = await api('/admin/staff');
+    applyStaffFilters();
+  } catch (error) {
+    PharmaWeb.toast(error.message, 'error');
+    // Le tableau est vidé plutôt que laissé sur ses squelettes : une grille qui scintille
+    // indéfiniment laisse croire à un chargement toujours en cours.
+    staffTable.setRows([]);
+  }
+}
+
+// ---------- Reprise de session ----------
+
+(async function init() {
+  if (!PharmaWeb.getToken() || !state.user) return;
+  try {
+    var me = await api('/auth/me');
+    if (me.role === 'ADMIN') {
+      enterDashboard();
+      return;
+    }
+  } catch (error) {
+    // Jeton invalide ou expiré : retour à l'écran de connexion.
+  }
+  logout();
+})();
+</script>
+</body>
+</html>
