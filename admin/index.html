@@ -753,7 +753,7 @@ async function enterDashboard() {
  */
 async function loadOverview() {
   var stats = document.getElementById('overview-stats');
-  stats.innerHTML = PharmaWeb.statSkeleton ? PharmaWeb.statSkeleton(4) : '';
+  stats.innerHTML = PharmaWeb.statSkeleton ? PharmaWeb.statSkeleton(5) : '';
 
   try {
     var data = await api('/admin/overview');
@@ -770,8 +770,17 @@ function renderOverview(data) {
     'Au ' + PharmaWeb.formatDateTime(data.generatedAt);
 
   document.getElementById('overview-stats').innerHTML = [
+    // Ce que gagne Pharma Connect : marge de livraison et commissions. Placé en premier,
+    // parce que c'est le seul chiffre qui dit si l'entreprise vit.
     statCard(
-      "Chiffre d'affaires du jour",
+      'Revenu Pharma Connect du jour',
+      PharmaWeb.formatPrice(data.earnings.today),
+      deltaLabel(data.earnings.change, PharmaWeb.formatPrice(data.earnings.yesterday)) +
+        ' · ' + PharmaWeb.formatPrice(data.earnings.month) + ' ce mois',
+      data.earnings.change
+    ),
+    statCard(
+      'Ventes du jour (livrées)',
       PharmaWeb.formatPrice(data.revenue.today),
       deltaLabel(data.revenue.change, PharmaWeb.formatPrice(data.revenue.yesterday)),
       data.revenue.change
